@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #932616;
+  --color-primary-container: #b43e2b;
+  --color-primary-fixed: #ffdad4;
+  --color-primary-fixed-dim: #ffb4a6;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #ffded8;
+
+  --color-secondary: #8d4f00;
+  --color-secondary-container: #ffa03e;
+  --color-secondary-fixed: #ffdcc0;
+  --color-secondary-fixed-dim: #ffb877;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-fixed: #2d1600;
+  --color-on-secondary-fixed-variant: #6b3b00;
+
+  --color-tertiary: #005c15;
+  --color-tertiary-container: #25752b;
+  --color-tertiary-fixed: #a3f69c;
+  --color-tertiary-fixed-dim: #88d982;
+  --color-on-tertiary: #ffffff;
+
+  --color-accent-gold: #D49B24;
+  --color-veg-symbol: #2E7D32;
+
+  --color-background: #fff8f5;
+  --color-surface: #fff8f5;
+  --color-surface-canvas: #FAF8F5;
+  --color-surface-card: #FFFFFF;
+  --color-surface-dim: #e1d8d3;
+  --color-surface-bright: #fff8f5;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #fbf2ec;
+  --color-surface-container: #f6ece7;
+  --color-surface-container-high: #f0e6e1;
+  --color-surface-container-highest: #eae1db;
+  --color-surface-variant: #eae1db;
+
+  --color-on-surface: #1f1b18;
+  --color-on-surface-variant: #58413d;
+  --color-on-background: #1f1b18;
+  --color-text-muted: #696159;
+  --color-border-warm: #E8E2DA;
+
+  --color-inverse-surface: #342f2c;
+  --color-inverse-on-surface: #f8efea;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+
+  --font-serif: "Playfair Display", Georgia, Cambria, serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-serif-display {
+  font-family: var(--font-serif);
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrolling marquee animation for mobile top banner */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 22s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
+:focus-visible { outline: 2px solid #932616; outline-offset: 2px; }
