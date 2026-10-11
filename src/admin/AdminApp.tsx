@@ -63,7 +63,14 @@ function Shell() {
   return (
     <div className="min-h-screen bg-surface-canvas lg:grid lg:grid-cols-[16rem_1fr]">
       <aside className="hidden lg:flex flex-col bg-white border-r border-border-warm p-4 sticky top-0 h-screen">
-        <div className="font-serif text-xl font-bold text-primary px-2 mb-6">{settings.storeName}<div className="text-[11px] font-sans font-semibold text-text-muted">Admin portal</div></div>
+        <div className="px-2 mb-6">
+          <img
+            src="https://res.cloudinary.com/dvw4oasd1/image/upload/v1791729052/s2k-logo-removebg-preview_qzpgkp.png"
+            alt={settings.storeName || 'Sweet2Kaaram'}
+            className="w-full h-16 object-contain object-left"
+          />
+          <div className="text-[11px] font-sans font-semibold text-text-muted">Admin portal</div>
+        </div>
         {nav}
         <div className="mt-auto space-y-1 pt-4 border-t border-border-warm">
           <a href="/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-4 h-10 text-sm text-on-surface-variant hover:text-primary"><Icon name="open_in_new" className="text-xl" />View store</a>
@@ -74,7 +81,11 @@ function Shell() {
 
       <div className="lg:hidden sticky top-0 z-40 bg-white border-b border-border-warm h-14 px-4 flex items-center justify-between">
         <button onClick={() => setOpen(true)} aria-label="Open menu" className="cursor-pointer"><Icon name="menu" /></button>
-        <span className="font-serif font-bold text-primary">Admin</span>
+        <img
+          src="https://res.cloudinary.com/dvw4oasd1/image/upload/v1791729052/s2k-logo-removebg-preview_qzpgkp.png"
+          alt={`${settings.storeName || 'Sweet2Kaaram'} admin`}
+          className="h-10 max-w-[60%] object-contain"
+        />
         <button onClick={logout} aria-label="Sign out" className="cursor-pointer"><Icon name="logout" /></button>
       </div>
       {open && (
