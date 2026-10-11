@@ -5,7 +5,7 @@ import { ErrorBox, Icon, Spinner } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useStore } from '../context/StoreContext';
 
-const CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? '';
+const CLIENT_ID = (import.meta.env.GOOGLE_CLIENT_ID as string | undefined) ?? '';
 
 export default function Login() {
   const { user, loginWithGoogle } = useAuth();
@@ -37,7 +37,7 @@ export default function Login() {
 
         <div className="mt-8 flex justify-center min-h-11">
           {!CLIENT_ID ? (
-            <ErrorBox message="Google login is not set up yet. Add VITE_GOOGLE_CLIENT_ID to the frontend environment settings (see README)." />
+            <ErrorBox message="Google login is not set up yet. Add GOOGLE_CLIENT_ID to the frontend environment settings." />
           ) : busy ? (
             <div className="flex items-center gap-3 text-sm text-text-muted"><Spinner />Signing you in…</div>
           ) : (
