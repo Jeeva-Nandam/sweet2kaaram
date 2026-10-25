@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { Empty, ErrorBox, Icon, PageLoader } from '../components/ui';
 import { useStore } from '../context/StoreContext';
-import { rupees } from '../lib/format';
 import type { Page, Product } from '../lib/types';
 import { useApi } from '../lib/useApi';
 
@@ -36,7 +35,7 @@ export default function Home() {
 
       <ul className="mt-6 grid sm:grid-cols-3 gap-3 text-sm">
         {[
-          ['local_shipping', `Free shipping above ${rupees(s.freeShippingThreshold)}`],
+          ['local_shipping', 'Free shipping from ₹499 in Tamil Nadu / ₹799 elsewhere'],
           ['payments', s.codEnabled ? 'Cash on delivery available' : 'Secure checkout'],
           ['route', 'Follow every order, step by step'],
         ].map(([icon, text]) => (

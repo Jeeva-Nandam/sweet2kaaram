@@ -27,9 +27,9 @@ export default function SettingsPage() {
   const save = async (e: FormEvent) => {
     e.preventDefault(); setSaving(true); setFormErr('');
     try {
-      const { onlinePaymentEnabled: _skip, ...rest } = s;
+      const { onlinePaymentEnabled: _skip, ...settings } = s;
       void _skip;
-      await api.put('/admin/settings', { ...rest, freeShippingThreshold: Number(s.freeShippingThreshold), shippingFee: Number(s.shippingFee) });
+      await api.put('/admin/settings', settings);
       reload(); toast.ok('Settings saved');
     } catch (err) { setFormErr((err as Error).message); } finally { setSaving(false); }
   };
@@ -42,10 +42,7 @@ export default function SettingsPage() {
         {!s.isAcceptingOrders && <Field label="Message shown to customers"><input className={inputCls} value={s.pausedMessage} onChange={txt('pausedMessage')} /></Field>}
       </Card>
       <Card title="Shipping and payment">
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="Shipping fee (₹)"><input type="number" min={0} className={inputCls} value={s.shippingFee} onChange={(e) => set('shippingFee', e.target.value as never)} /></Field>
-          <Field label="Free shipping above (₹)"><input type="number" min={0} className={inputCls} value={s.freeShippingThreshold} onChange={(e) => set('freeShippingThreshold', e.target.value as never)} /></Field>
-        </div>
+        <p className="text-sm text-text-muted">Shipping is ₹50 for Tamil Nadu orders below ₹499, and ₹80 for other states below ₹799. Eligible orders ship free.</p>
         <label className="flex items-center gap-3 text-sm"><Toggle checked={s.codEnabled} onChange={(v) => set('codEnabled', v)} label="Cash on delivery" />Cash on delivery</label>
         <p className="text-xs text-text-muted">Online payment (UPI and cards) will be added later. Until then, COD is the only way to order.</p>
       </Card>
@@ -53,7 +50,7 @@ export default function SettingsPage() {
         <ImageInput kind="hero" value={s.heroImage} onChange={(u) => set('heroImage', u)} />
         <Field label="Headline"><input className={inputCls} maxLength={100} value={s.heroTitle} onChange={txt('heroTitle')} /></Field>
         <Field label="Sub-heading"><input className={inputCls} maxLength={200} value={s.heroSubtitle} onChange={txt('heroSubtitle')} /></Field>
-        <Field label="Top ribbon message" hint="Leave empty to show the free-shipping message"><input className={inputCls} maxLength={200} value={s.announcement} onChange={txt('announcement')} /></Field>
+        <Field label="Top ribbon message" hint="Leave empty to show the delivery-based shipping message"><input className={inputCls} maxLength={200} value={s.announcement} onChange={txt('announcement')} /></Field>
       </Card>
       <Card title="Store details">
         <Field label="Store name"><input required className={inputCls} value={s.storeName} onChange={txt('storeName')} /></Field>

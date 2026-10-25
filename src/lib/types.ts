@@ -27,7 +27,7 @@ export interface Order {
 }
 export interface Settings {
   storeName: string; tagline: string; announcement: string; isAcceptingOrders: boolean; pausedMessage: string;
-  freeShippingThreshold: number; shippingFee: number; codEnabled: boolean; onlinePaymentEnabled: boolean;
+  codEnabled: boolean; onlinePaymentEnabled: boolean;
   contactPhone: string; contactEmail: string; whatsapp: string; address: string;
   heroImage: string; heroTitle: string; heroSubtitle: string;
 }
@@ -37,7 +37,7 @@ export interface Coupon {
 }
 export interface Quote {
   lines: { productId: string; name: string; weight: string; image: string; price: number; stock: number; quantity: number }[];
-  subtotal: number; discount: number; shippingFee: number; total: number;
+  subtotal: number; discount: number; shippingFee: number | null; shippingThreshold: number | null; total: number | null;
   couponCode: string; couponError: string; problems: string[];
 }
 export interface Page<T> { items: T[]; total: number; page: number; pages: number; }

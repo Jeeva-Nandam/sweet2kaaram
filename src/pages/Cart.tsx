@@ -4,38 +4,44 @@ import { Empty, Icon, Img, Spinner, btnGhost, btnPrimary, inputCls } from '../co
 import { useCart } from '../context/CartContext';
 import { useStore } from '../context/StoreContext';
 import { api } from '../lib/api';
-import { rupees } from '../lib/format';
+import { INDIAN_STATES, rupees } from '../lib/format';
+import { freeShippingMessage } from '../lib/shipping';
 import type { Quote } from '../lib/types';
 
 /** Totals shown here come from the server (/orders/quote), so they match what checkout will charge. */
-export function useQuote() {
+export function useQuote(deliveryState = '') {
   const { lines, couponCode } = useCart();
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [quotedKey, setQuotedKey] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const key = JSON.stringify([lines.map((l) => [l.product.id, l.quantity]), couponCode]);
+  const key = JSON.stringify([lines.map((l) => [l.product.id, l.quantity]), couponCode, deliveryState]);
 
   useEffect(() => {
-    if (!lines.length) { setQuote(null); return; }
+    if (!lines.length) { setQuote(null); setQuotedKey(key); return; }
     let live = true;
     setLoading(true);
-    const t = setTimeout(() => {
-      api.post<Quote>('/orders/quote', { items: lines.map((l) => ({ productId: l.product.id, quantity: l.quantity })), couponCode: couponCode || undefined })
-        .then((q) => { if (live) { setQuote(q); setError(''); } })
-        .catch((e: Error) => live && setError(e.message))
-        .finally(() => live && setLoading(false));
-    }, 250);
-    return () => { live = false; clearTimeout(t); };
+    setError('');
+    api.post<Quote>('/orders/quote', {
+      items: lines.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
+      couponCode: couponCode || undefined,
+      deliveryState: deliveryState || undefined,
+    })
+      .then((q) => { if (live) { setQuote(q); setQuotedKey(key); } })
+      .catch((e: Error) => live && setError(e.message))
+      .finally(() => live && setLoading(false));
+    return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  return { quote, error, loading };
+  return { quote: quotedKey === key ? quote : null, error, loading };
 }
 
 export default function Cart() {
   const { lines, setQty, remove, couponCode, setCouponCode } = useCart();
   const { settings } = useStore();
-  const { quote, error, loading } = useQuote();
+  const [deliveryState, setDeliveryState] = useState('');
+  const { quote, error, loading } = useQuote(deliveryState);
   const [code, setCode] = useState(couponCode);
   const nav = useNavigate();
 
@@ -44,8 +50,8 @@ export default function Cart() {
   const live = (id: string) => quote?.lines.find((l) => l.productId === id);
   const gone = (id: string) => !!quote && !live(id);
   const over = (id: string, qty: number) => { const l = live(id); return !!l && l.stock < qty; };
-  const blocked = !quote || quote.problems.length > 0 || lines.some((l) => gone(l.product.id) || over(l.product.id, l.quantity)) || !settings.isAcceptingOrders;
-  const toFree = quote ? settings.freeShippingThreshold - quote.subtotal : 0;
+  const blocked = !deliveryState || !quote || quote.shippingFee === null || quote.total === null || quote.problems.length > 0
+    || lines.some((l) => gone(l.product.id) || over(l.product.id, l.quantity)) || !settings.isAcceptingOrders;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-8">
@@ -82,6 +88,13 @@ export default function Cart() {
 
         <aside className="bg-white border border-border-warm rounded-2xl p-5 lg:sticky lg:top-40">
           <h2 className="font-serif text-xl font-semibold mb-4">Order summary</h2>
+          <label className="block mb-4">
+            <span className="block text-sm font-semibold mb-1.5">Delivery state</span>
+            <select required aria-label="Delivery state" className={inputCls} value={deliveryState} onChange={(e) => setDeliveryState(e.target.value)}>
+              <option value="">Select delivery state</option>
+              {INDIAN_STATES.map((state) => <option key={state}>{state}</option>)}
+            </select>
+          </label>
           <form className="flex gap-2 mb-1" onSubmit={(e) => { e.preventDefault(); setCouponCode(code.trim().toUpperCase()); }}>
             <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Coupon code" aria-label="Coupon code" className={`${inputCls} uppercase`} />
             <button className={btnGhost} type="submit">Apply</button>
@@ -95,11 +108,11 @@ export default function Cart() {
             <dl className="mt-3 space-y-2 text-sm">
               <div className="flex justify-between"><dt>Subtotal</dt><dd>{rupees(quote.subtotal)}</dd></div>
               {quote.discount > 0 && <div className="flex justify-between text-tertiary"><dt>Discount</dt><dd>− {rupees(quote.discount)}</dd></div>}
-              <div className="flex justify-between"><dt>Shipping</dt><dd>{quote.shippingFee === 0 ? 'Free' : rupees(quote.shippingFee)}</dd></div>
-              <div className="flex justify-between border-t border-border-warm pt-3 mt-3 text-base font-bold"><dt>Total</dt><dd>{rupees(quote.total)}</dd></div>
+              <div className="flex justify-between"><dt>Shipping</dt><dd>{quote.shippingFee === null ? 'Select a state' : quote.shippingFee === 0 ? 'Free' : rupees(quote.shippingFee)}</dd></div>
+              <div className="flex justify-between border-t border-border-warm pt-3 mt-3 text-base font-bold"><dt>Total</dt><dd>{quote.total === null ? '—' : rupees(quote.total)}</dd></div>
             </dl>
           )}
-          {quote && toFree > 0 && <p className="text-xs text-text-muted mt-3">Add {rupees(toFree)} more for free shipping.</p>}
+          {quote && <p className="text-xs text-text-muted mt-3">{freeShippingMessage(quote.subtotal, quote.shippingThreshold)}</p>}
           {!settings.isAcceptingOrders && <p className="text-sm text-error mt-3">{settings.pausedMessage}</p>}
           <button disabled={blocked || loading} onClick={() => nav('/checkout')} className={`${btnPrimary} w-full mt-5 h-12`}>Proceed to checkout</button>
           <p className="text-xs text-text-muted mt-3 text-center">You will be asked to log in with Google before checkout.</p>

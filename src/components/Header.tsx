@@ -3,7 +3,6 @@ import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useStore } from '../context/StoreContext';
-import { rupees } from '../lib/format';
 import { Icon } from './ui';
 
 export default function Header() {
@@ -28,7 +27,7 @@ export default function Header() {
 
   const ribbon = !settings.isAcceptingOrders
     ? settings.pausedMessage || 'We are not taking new orders right now.'
-    : settings.announcement || `Free shipping on orders above ${rupees(settings.freeShippingThreshold)}`;
+    : settings.announcement || 'Shipping calculated by delivery state and order value';
 
   const tab = ({ isActive }: { isActive: boolean }) =>
     `shrink-0 px-3 py-2 text-sm font-semibold border-b-2 transition-colors ${isActive ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-primary'}`;

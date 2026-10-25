@@ -4,7 +4,7 @@ import type { Category, Settings } from '../lib/types';
 
 const DEFAULTS: Settings = {
   storeName: 'Sweet2Kaaram', tagline: 'The Soul of Native Taste', announcement: '', isAcceptingOrders: true, pausedMessage: '',
-  freeShippingThreshold: 699, shippingFee: 80, codEnabled: true, onlinePaymentEnabled: false,
+  codEnabled: true, onlinePaymentEnabled: false,
   contactPhone: '', contactEmail: 'sweet2karram26@gmail.com', whatsapp: '', address: '', heroImage: '', heroTitle: '', heroSubtitle: '',
 };
 

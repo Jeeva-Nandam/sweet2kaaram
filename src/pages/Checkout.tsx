@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext';
 import { useStore } from '../context/StoreContext';
 import { api } from '../lib/api';
 import { INDIAN_STATES, rupees } from '../lib/format';
+import { freeShippingMessage } from '../lib/shipping';
 import type { Address, Order } from '../lib/types';
 import { useQuote } from './Cart';
 
@@ -15,7 +16,6 @@ export default function Checkout() {
   const { user, setAddresses } = useAuth();
   const { lines, couponCode, clear } = useCart();
   const { settings } = useStore();
-  const { quote, error: quoteError } = useQuote();
   const nav = useNavigate();
   const toast = useToast();
   const placed = useRef(false);
@@ -29,6 +29,8 @@ export default function Checkout() {
   const [note, setNote] = useState('');
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
+  const deliveryState = adding ? form.state : addrs.find((a) => a.id === addrId)?.state ?? '';
+  const { quote, error: quoteError } = useQuote(deliveryState);
 
   if (!lines.length && !placed.current) return <Navigate to="/cart" replace />;
   const set = (k: keyof typeof blank, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
@@ -47,7 +49,8 @@ export default function Checkout() {
   };
 
   const problems = quote?.problems ?? [];
-  const canPlace = !!quote && !!addrId && !adding && problems.length === 0 && !placing && settings.isAcceptingOrders && settings.codEnabled && !(couponCode && quote.couponError);
+  const canPlace = !!quote && quote.shippingFee !== null && quote.total !== null && !!addrId && !adding
+    && problems.length === 0 && !placing && settings.isAcceptingOrders && settings.codEnabled && !(couponCode && quote.couponError);
 
   const place = async () => {
     setPlacing(true); setError('');
@@ -142,15 +145,17 @@ export default function Checkout() {
             <dl className="mt-4 space-y-2 text-sm border-t border-border-warm pt-4">
               <div className="flex justify-between"><dt>Subtotal</dt><dd>{rupees(quote.subtotal)}</dd></div>
               {quote.discount > 0 && <div className="flex justify-between text-tertiary"><dt>Discount ({quote.couponCode})</dt><dd>− {rupees(quote.discount)}</dd></div>}
-              <div className="flex justify-between"><dt>Shipping</dt><dd>{quote.shippingFee === 0 ? 'Free' : rupees(quote.shippingFee)}</dd></div>
-              <div className="flex justify-between border-t border-border-warm pt-3 mt-3 text-base font-bold"><dt>Total to pay</dt><dd>{rupees(quote.total)}</dd></div>
+              <div className="flex justify-between"><dt>Shipping</dt><dd>{quote.shippingFee === null ? 'Select a state' : quote.shippingFee === 0 ? 'Free' : rupees(quote.shippingFee)}</dd></div>
+              <div className="flex justify-between border-t border-border-warm pt-3 mt-3 text-base font-bold"><dt>Total to pay</dt><dd>{quote.total === null ? '—' : rupees(quote.total)}</dd></div>
             </dl>
           )}
+          {quote && <p className="text-xs text-text-muted mt-3">{freeShippingMessage(quote.subtotal, quote.shippingThreshold)}</p>}
+          {!deliveryState && !adding && <p className="text-xs text-text-muted mt-3">Choose a delivery address to calculate shipping and total.</p>}
           {problems.map((m) => <p key={m} className="text-sm text-error mt-3">{m}. <Link to="/cart" className="underline font-semibold">Update cart</Link></p>)}
           {quote?.couponError && couponCode && <p className="text-sm text-error mt-3">{quote.couponError}. <Link to="/cart" className="underline font-semibold">Fix coupon</Link></p>}
           {error && <div className="mt-3"><ErrorBox message={error} /></div>}
           <button className={`${btnPrimary} w-full mt-5 h-12`} disabled={!canPlace} onClick={place}>
-            {placing ? <Spinner className="border-white/40 border-t-white" /> : `Place order${quote ? ` · ${rupees(quote.total)}` : ''}`}
+            {placing ? <Spinner className="border-white/40 border-t-white" /> : `Place order${quote?.total !== null && quote?.total !== undefined ? ` · ${rupees(quote.total)}` : ''}`}
           </button>
           {!addrId && !adding && <p className="text-xs text-text-muted mt-2 text-center">Choose a delivery address to continue.</p>}
         </aside>

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { Empty, ErrorBox, Field, Icon, Img, PageLoader, Spinner, StatusBadge, btnGhost, btnPrimary, inputCls, useToast } from '../components/ui';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Empty, ErrorBox, Field, Icon, Img, PageLoader, Spinner, StatusBadge, btnDanger, btnGhost, btnPrimary, inputCls, useToast } from '../components/ui';
 import { api, qs } from '../lib/api';
 import { dateTime, FLOW, rupees, STATUS_LABEL } from '../lib/format';
 import type { Order, OrderStatus, Page } from '../lib/types';
@@ -9,6 +9,7 @@ import { useApi } from '../lib/useApi';
 const TABS: ('' | OrderStatus)[] = ['', 'PLACED', 'CONFIRMED', 'PREPARING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'];
 
 export function AdminOrders() {
+  const toast = useToast();
   const [params, setParams] = useSearchParams();
   const status = params.get('status') ?? '';
   const [q, setQ] = useState('');
@@ -18,6 +19,15 @@ export function AdminOrders() {
   useEffect(() => { const t = setTimeout(() => setDebounced(path), 250); return () => clearTimeout(t); }, [path]);
   useEffect(() => setPage(1), [status, q]);
   const { data, error, loading, reload } = useApi<Page<Order>>(debounced);
+  const remove = async (order: Order) => {
+    if (!window.confirm(`Permanently delete order ${order.orderNumber}? This cannot be undone.`)) return;
+    try {
+      await api.del(`/admin/orders/${order.id}`);
+      toast.ok('Order deleted');
+      if (data?.items.length === 1 && page > 1) setPage((p) => p - 1);
+      else reload();
+    } catch (e) { toast.err((e as Error).message); }
+  };
 
   return (
     <div className="max-w-6xl space-y-5">
@@ -32,13 +42,16 @@ export function AdminOrders() {
       {data && data.items.length > 0 && (
         <ul className="bg-white border border-border-warm rounded-2xl divide-y divide-border-warm">
           {data.items.map((o) => (
-            <li key={o.id}><Link to={`/adminpage/orders/${o.id}`} className="flex flex-wrap items-center gap-x-6 gap-y-1 p-4 hover:bg-surface-container-low">
-              <div className="min-w-32"><div className="font-bold">{o.orderNumber}</div><div className="text-xs text-text-muted">{dateTime(o.createdAt)}</div></div>
-              <div className="flex-1 min-w-40"><div className="font-semibold text-sm">{o.customerName}</div><div className="text-xs text-text-muted">{o.address.city} · {o.items.reduce((n, i) => n + i.quantity, 0)} items</div></div>
-              <div className="font-bold">{rupees(o.total)}</div>
-              <div className="text-xs text-text-muted w-16">{o.paymentMethod === 'COD' ? 'COD' : 'Online'} · {o.paymentStatus === 'PAID' ? 'Paid' : 'Due'}</div>
-              <StatusBadge status={o.status} />
-            </Link></li>
+            <li key={o.id} className="flex flex-wrap items-center gap-x-3">
+              <Link to={`/adminpage/orders/${o.id}`} className="flex flex-1 flex-wrap items-center gap-x-6 gap-y-1 p-4 min-w-0 hover:bg-surface-container-low">
+                <div className="min-w-32"><div className="font-bold">{o.orderNumber}</div><div className="text-xs text-text-muted">{dateTime(o.createdAt)}</div></div>
+                <div className="flex-1 min-w-40"><div className="font-semibold text-sm">{o.customerName}</div><div className="text-xs text-text-muted">{o.address.city} · {o.items.reduce((n, i) => n + i.quantity, 0)} items</div></div>
+                <div className="font-bold">{rupees(o.total)}</div>
+                <div className="text-xs text-text-muted w-16">{o.paymentMethod === 'COD' ? 'COD' : 'Online'} · {o.paymentStatus === 'PAID' ? 'Paid' : 'Due'}</div>
+                <StatusBadge status={o.status} />
+              </Link>
+              <button aria-label={`Delete order ${o.orderNumber}`} className="p-3 text-on-surface-variant hover:text-error cursor-pointer" onClick={() => remove(o)}><Icon name="delete" className="text-xl" /></button>
+            </li>
           ))}
         </ul>
       )}
@@ -54,11 +67,13 @@ export function AdminOrders() {
 
 export function AdminOrderDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const toast = useToast();
   const { data: o, error, loading, reload, setData } = useApi<Order>(`/admin/orders/${id}`);
   const [f, setF] = useState({ status: '' as OrderStatus | '', note: '', courier: '', trackingNumber: '', trackingUrl: '', eta: '', paymentStatus: 'PENDING' });
   const [saving, setSaving] = useState(false);
   const [formErr, setFormErr] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!o) return;
@@ -87,11 +102,20 @@ export function AdminOrderDetail() {
       setData(updated); toast.ok('Order updated');
     } catch (err) { setFormErr((err as Error).message); } finally { setSaving(false); }
   };
+  const remove = async () => {
+    if (!window.confirm(`Permanently delete order ${o.orderNumber}? This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      await api.del(`/admin/orders/${o.id}`);
+      toast.ok('Order deleted');
+      navigate('/adminpage/orders', { replace: true });
+    } catch (err) { toast.err((err as Error).message); } finally { setDeleting(false); }
+  };
 
   return (
     <div className="max-w-6xl space-y-5">
       <Link to="/adminpage/orders" className="text-sm text-text-muted hover:text-primary inline-flex items-center gap-1"><Icon name="arrow_back" className="text-base" />All orders</Link>
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="font-serif text-3xl font-semibold">{o.orderNumber}</h1><p className="text-sm text-text-muted">Placed {dateTime(o.createdAt)}</p></div><StatusBadge status={o.status} /></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="font-serif text-3xl font-semibold">{o.orderNumber}</h1><p className="text-sm text-text-muted">Placed {dateTime(o.createdAt)}</p></div><div className="flex items-center gap-3"><StatusBadge status={o.status} /><button className={btnDanger} disabled={deleting} onClick={remove}><Icon name="delete" />{deleting ? <Spinner /> : 'Delete order'}</button></div></div>
 
       <div className="grid lg:grid-cols-[1fr_24rem] gap-6 items-start">
         <div className="space-y-6">

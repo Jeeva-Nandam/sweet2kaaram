@@ -10,7 +10,7 @@ import { useApi } from '../lib/useApi';
 export default function ProductDetail() {
   const { id } = useParams();
   const { data: p, loading, error } = useApi<Product>(id ? `/products/${id}` : null);
-  const { categories, settings } = useStore();
+  const { categories } = useStore();
   const { add } = useCart();
   const nav = useNavigate();
   const toast = useToast();
@@ -53,7 +53,7 @@ export default function ProductDetail() {
             <span className="text-3xl font-bold">{rupees(p.price)}</span>
             {off > 0 && <><span className="text-text-muted line-through">{rupees(p.originalPrice)}</span><span className="text-sm font-bold text-tertiary">{off}% off</span></>}
           </div>
-          <p className="text-xs text-text-muted mt-1">Inclusive of taxes. {settings.shippingFee > 0 && `Free shipping above ${rupees(settings.freeShippingThreshold)}.`}</p>
+          <p className="text-xs text-text-muted mt-1">Inclusive of taxes. Shipping is calculated by your delivery state and order value.</p>
 
           <p className={`mt-4 text-sm font-semibold ${out ? 'text-error' : p.stock <= p.lowStockThreshold ? 'text-secondary' : 'text-tertiary'}`}>
             {out ? 'Currently out of stock' : p.stock <= p.lowStockThreshold ? `Only ${p.stock} left` : 'In stock'}
