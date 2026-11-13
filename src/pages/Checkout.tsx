@@ -1,4 +1,4 @@
-import { FormEvent, useRef, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ErrorBox, Field, Icon, Img, Spinner, btnGhost, btnPrimary, inputCls, useToast } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
@@ -8,9 +8,22 @@ import { api } from '../lib/api';
 import { INDIAN_STATES, rupees } from '../lib/format';
 import { freeShippingMessage } from '../lib/shipping';
 import type { Address, Order } from '../lib/types';
+import { openRazorpayCheckout, type RazorpaySuccess } from '../lib/razorpay';
 import { useQuote } from './Cart';
 
 const blank = { label: 'Home', name: '', phone: '', line1: '', landmark: '', city: '', state: '', pincode: '', isDefault: false };
+
+interface OnlinePaymentSession {
+  orderId: string;
+  keyId: string;
+  razorpayOrderId: string;
+  amount: number;
+  currency: string;
+  storeName: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+}
 
 export default function Checkout() {
   const { user, setAddresses } = useAuth();
@@ -29,8 +42,16 @@ export default function Checkout() {
   const [note, setNote] = useState('');
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE'>('COD');
+  const [paymentSession, setPaymentSession] = useState<OnlinePaymentSession | null>(null);
+  const [pendingVerification, setPendingVerification] = useState<RazorpaySuccess | null>(null);
   const deliveryState = adding ? form.state : addrs.find((a) => a.id === addrId)?.state ?? '';
   const { quote, error: quoteError } = useQuote(deliveryState);
+
+  useEffect(() => {
+    if (!settings.codEnabled && settings.onlinePaymentEnabled) setPaymentMethod('ONLINE');
+    else if (!settings.onlinePaymentEnabled && settings.codEnabled) setPaymentMethod('COD');
+  }, [settings.codEnabled, settings.onlinePaymentEnabled]);
 
   if (!lines.length && !placed.current) return <Navigate to="/cart" replace />;
   const set = (k: keyof typeof blank, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
@@ -50,18 +71,91 @@ export default function Checkout() {
 
   const problems = quote?.problems ?? [];
   const canPlace = !!quote && quote.shippingFee !== null && quote.total !== null && !!addrId && !adding
-    && problems.length === 0 && !placing && settings.isAcceptingOrders && settings.codEnabled && !(couponCode && quote.couponError);
+    && problems.length === 0 && !placing && settings.isAcceptingOrders
+    && (paymentMethod === 'COD' ? settings.codEnabled : settings.onlinePaymentEnabled)
+    && !(couponCode && quote.couponError);
 
-  const place = async () => {
+  const finishOrder = (order: Order) => {
+    placed.current = true;
+    clear();
+    nav(`/order-success/${order.id}`, { replace: true });
+  };
+
+  const verifyPayment = async (session: OnlinePaymentSession, response: RazorpaySuccess) => {
     setPlacing(true); setError('');
     try {
-      const order = await api.post<Order>('/orders', {
-        items: lines.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
-        addressId: addrId, paymentMethod: 'COD', couponCode: couponCode || undefined, customerNote: note,
+      const order = await api.post<Order>(`/orders/mine/${session.orderId}/payment/verify`, response);
+      finishOrder(order);
+    } catch (e) {
+      setPendingVerification(response);
+      setError((e as Error).message);
+      setPlacing(false);
+    }
+  };
+
+  const openPayment = async (session: OnlinePaymentSession) => {
+    setPlacing(true); setError('');
+    let paymentHandled = false;
+    try {
+      await openRazorpayCheckout({
+        key: session.keyId,
+        order_id: session.razorpayOrderId,
+        amount: session.amount,
+        currency: session.currency,
+        name: session.storeName,
+        description: 'Order payment',
+        prefill: {
+          name: session.customerName,
+          email: session.customerEmail,
+          contact: session.customerPhone,
+        },
+        theme: { color: '#932616' },
+        handler: async (response) => {
+          paymentHandled = true;
+          setPendingVerification(response);
+          await verifyPayment(session, response);
+        },
+        onFailure: (message) => {
+          paymentHandled = true;
+          setPlacing(false);
+          setError(message || 'Payment was not completed. You can retry securely from this page.');
+        },
+        modal: {
+          ondismiss: () => {
+            if (!paymentHandled) {
+              setPlacing(false);
+              setError('Payment was not completed. You can retry securely from this page.');
+            }
+          },
+        },
       });
-      placed.current = true;
-      clear();
-      nav(`/order-success/${order.id}`, { replace: true });
+    } catch (e) {
+      setError((e as Error).message);
+      setPlacing(false);
+      toast.err('Could not open Razorpay checkout');
+    }
+  };
+
+  const place = async () => {
+    if (paymentMethod === 'ONLINE' && paymentSession) {
+      if (pendingVerification) await verifyPayment(paymentSession, pendingVerification);
+      else await openPayment(paymentSession);
+      return;
+    }
+    setPlacing(true); setError('');
+    try {
+      const payload = {
+        items: lines.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
+        addressId: addrId, paymentMethod, couponCode: couponCode || undefined, customerNote: note,
+      };
+      if (paymentMethod === 'COD') {
+        const order = await api.post<Order>('/orders', payload);
+        finishOrder(order);
+      } else {
+        const session = await api.post<OnlinePaymentSession>('/orders', payload);
+        setPaymentSession(session);
+        await openPayment(session);
+      }
     } catch (e) {
       setError((e as Error).message); setPlacing(false);
       toast.err('Order not placed');
@@ -113,15 +207,20 @@ export default function Checkout() {
 
           <section className="bg-white border border-border-warm rounded-2xl p-5">
             <h2 className="font-serif text-xl font-semibold mb-4 flex items-center gap-2"><Icon name="payments" className="text-primary" />Payment</h2>
-            <label className="flex gap-3 p-4 rounded-xl border border-primary bg-surface-container-low">
-              <input type="radio" checked readOnly className="mt-1 accent-[#932616]" />
-              <div className="text-sm"><div className="font-bold">Cash on delivery</div><div className="text-on-surface-variant">Pay in cash when your order arrives.</div></div>
-            </label>
-            <div className="flex gap-3 p-4 rounded-xl border border-border-warm mt-3 opacity-60" aria-disabled="true">
-              <input type="radio" disabled className="mt-1" />
-              <div className="text-sm"><div className="font-bold">UPI, cards and net banking <span className="ml-1 text-xs bg-surface-container px-2 py-0.5 rounded">Coming soon</span></div><div className="text-on-surface-variant">Online payment will be available shortly.</div></div>
-            </div>
-            {!settings.codEnabled && <p className="text-sm text-error mt-3">Cash on delivery is switched off right now, so orders cannot be placed yet.</p>}
+            {settings.codEnabled && (
+              <label className={`flex gap-3 p-4 rounded-xl border cursor-pointer ${paymentMethod === 'COD' ? 'border-primary bg-surface-container-low' : 'border-border-warm'}`}>
+                <input type="radio" name="payment" checked={paymentMethod === 'COD'} disabled={!!paymentSession} onChange={() => setPaymentMethod('COD')} className="mt-1 accent-[#932616]" />
+                <div className="text-sm"><div className="font-bold">Cash on delivery</div><div className="text-on-surface-variant">Pay in cash when your order arrives.</div></div>
+              </label>
+            )}
+            {settings.onlinePaymentEnabled && (
+              <label className={`flex gap-3 p-4 rounded-xl border cursor-pointer ${paymentMethod === 'ONLINE' ? 'border-primary bg-surface-container-low' : 'border-border-warm'} ${settings.codEnabled ? 'mt-3' : ''}`}>
+                <input type="radio" name="payment" checked={paymentMethod === 'ONLINE'} disabled={!!paymentSession} onChange={() => setPaymentMethod('ONLINE')} className="mt-1 accent-[#932616]" />
+                <div className="text-sm"><div className="font-bold">UPI, cards and net banking</div><div className="text-on-surface-variant">Secure online payment powered by Razorpay.</div></div>
+              </label>
+            )}
+            {!settings.codEnabled && !settings.onlinePaymentEnabled && <p className="text-sm text-error">No payment methods are available right now.</p>}
+            {paymentSession && <p className="text-xs text-text-muted mt-3">This payment attempt is reserved for your current order. Finish or retry it here.</p>}
           </section>
 
           <section className="bg-white border border-border-warm rounded-2xl p-5">
@@ -155,7 +254,7 @@ export default function Checkout() {
           {quote?.couponError && couponCode && <p className="text-sm text-error mt-3">{quote.couponError}. <Link to="/cart" className="underline font-semibold">Fix coupon</Link></p>}
           {error && <div className="mt-3"><ErrorBox message={error} /></div>}
           <button className={`${btnPrimary} w-full mt-5 h-12`} disabled={!canPlace} onClick={place}>
-            {placing ? <Spinner className="border-white/40 border-t-white" /> : `Place order${quote?.total !== null && quote?.total !== undefined ? ` · ${rupees(quote.total)}` : ''}`}
+            {placing ? <Spinner className="border-white/40 border-t-white" /> : paymentMethod === 'ONLINE' && pendingVerification ? 'Verify payment' : paymentMethod === 'ONLINE' && paymentSession ? 'Retry online payment' : paymentMethod === 'ONLINE' ? `Pay online${quote?.total !== null && quote?.total !== undefined ? ` · ${rupees(quote.total)}` : ''}` : `Place order${quote?.total !== null && quote?.total !== undefined ? ` · ${rupees(quote.total)}` : ''}`}
           </button>
           {!addrId && !adding && <p className="text-xs text-text-muted mt-2 text-center">Choose a delivery address to continue.</p>}
         </aside>

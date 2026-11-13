@@ -27,9 +27,7 @@ export default function SettingsPage() {
   const save = async (e: FormEvent) => {
     e.preventDefault(); setSaving(true); setFormErr('');
     try {
-      const { onlinePaymentEnabled: _skip, ...settings } = s;
-      void _skip;
-      await api.put('/admin/settings', settings);
+      await api.put('/admin/settings', s);
       reload(); toast.ok('Settings saved');
     } catch (err) { setFormErr((err as Error).message); } finally { setSaving(false); }
   };
@@ -44,7 +42,8 @@ export default function SettingsPage() {
       <Card title="Shipping and payment">
         <p className="text-sm text-text-muted">Shipping is ₹50 for Tamil Nadu orders below ₹499, and ₹80 for other states below ₹799. Eligible orders ship free.</p>
         <label className="flex items-center gap-3 text-sm"><Toggle checked={s.codEnabled} onChange={(v) => set('codEnabled', v)} label="Cash on delivery" />Cash on delivery</label>
-        <p className="text-xs text-text-muted">Online payment (UPI and cards) will be added later. Until then, COD is the only way to order.</p>
+        <label className="flex items-center gap-3 text-sm"><Toggle checked={s.onlinePaymentEnabled} onChange={(v) => set('onlinePaymentEnabled', v)} label="Online payments via Razorpay" />Online payments via Razorpay</label>
+        <p className="text-xs text-text-muted">Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to the backend environment before enabling online payments. Use test keys until checkout has been verified.</p>
       </Card>
       <Card title="Home page banner">
         <ImageInput kind="hero" value={s.heroImage} onChange={(u) => set('heroImage', u)} />

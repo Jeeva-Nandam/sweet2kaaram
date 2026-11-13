@@ -18,7 +18,7 @@ export default function OrderSuccess() {
 
       <div className="bg-white border border-border-warm rounded-2xl p-5 mt-8 text-left text-sm space-y-3">
         <div className="flex justify-between"><span className="text-text-muted">Items</span><span>{o.items.reduce((n, i) => n + i.quantity, 0)}</span></div>
-        <div className="flex justify-between"><span className="text-text-muted">Payment</span><span>{o.paymentMethod === 'COD' ? 'Cash on delivery' : 'Online'}</span></div>
+        <div className="flex justify-between"><span className="text-text-muted">Payment</span><span>{o.paymentMethod === 'COD' ? 'Cash on delivery' : o.paymentStatus === 'PAID' ? 'Paid online' : 'Online payment pending'}</span></div>
         <div className="flex justify-between font-bold text-base border-t border-border-warm pt-3"><span>{o.paymentMethod === 'COD' ? 'Amount to pay on delivery' : 'Total'}</span><span>{rupees(o.total)}</span></div>
         <div className="border-t border-border-warm pt-3 text-on-surface-variant">Delivering to <span className="font-semibold text-on-surface">{o.address.name}</span>, {o.address.line1}, {o.address.city} {o.address.pincode}</div>
       </div>
