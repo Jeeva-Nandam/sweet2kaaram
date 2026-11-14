@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
+import { GoogleLogin } from '@react-oauth/google';
 import { ErrorBox, Icon, Spinner } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useStore } from '../context/StoreContext';
@@ -41,9 +41,7 @@ export default function Login() {
           ) : busy ? (
             <div className="flex items-center gap-3 text-sm text-text-muted"><Spinner />Signing you in…</div>
           ) : (
-            <GoogleOAuthProvider clientId={CLIENT_ID}>
-              <GoogleLogin onSuccess={(r) => onCredential(r.credential)} onError={() => setError('Google sign-in was cancelled or failed. Please try again.')} text="continue_with" shape="rectangular" size="large" width="300" />
-            </GoogleOAuthProvider>
+            <GoogleLogin onSuccess={(r) => onCredential(r.credential)} onError={() => setError('Google sign-in was cancelled or failed. Please try again.')} text="continue_with" shape="rectangular" size="large" width="300" />
           )}
         </div>
         {error && <div className="mt-5 text-left"><ErrorBox message={error} /></div>}

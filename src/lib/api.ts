@@ -28,7 +28,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    if (res.status === 401 && token) window.dispatchEvent(new CustomEvent('mh:unauthorized', { detail: who }));
+    const publicAuthEndpoint = path === '/auth/google' || path === '/auth/admin/login';
+    if (res.status === 401 && !publicAuthEndpoint) {
+      window.dispatchEvent(new CustomEvent('mh:unauthorized', { detail: who }));
+    }
     throw new ApiError(res.status, (data as { message?: string }).message || 'Something went wrong. Please try again.');
   }
   return data as T;
