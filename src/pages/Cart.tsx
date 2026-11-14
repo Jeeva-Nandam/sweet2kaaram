@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Empty, Icon, Img, Spinner, btnGhost, btnPrimary, inputCls } from '../components/ui';
+import MentoringOffer from '../components/MentoringOffer';
 import { useCart } from '../context/CartContext';
 import { useStore } from '../context/StoreContext';
 import { api } from '../lib/api';
 import { INDIAN_STATES, rupees } from '../lib/format';
-import { freeShippingMessage } from '../lib/shipping';
+import { freeShippingMessage, shippingRateHint } from '../lib/shipping';
 import type { Quote } from '../lib/types';
 
 /** Totals shown here come from the server (/orders/quote), so they match what checkout will charge. */
@@ -40,7 +41,7 @@ export function useQuote(deliveryState = '') {
 export default function Cart() {
   const { lines, setQty, remove, couponCode, setCouponCode } = useCart();
   const { settings } = useStore();
-  const [deliveryState, setDeliveryState] = useState('');
+  const [deliveryState, setDeliveryState] = useState('Tamil Nadu');
   const { quote, error, loading } = useQuote(deliveryState);
   const [code, setCode] = useState(couponCode);
   const nav = useNavigate();
@@ -94,6 +95,9 @@ export default function Cart() {
               <option value="">Select delivery state</option>
               {INDIAN_STATES.map((state) => <option key={state}>{state}</option>)}
             </select>
+            <p aria-live="polite" className="mt-1.5 text-xs text-text-muted">
+              {error ? 'Shipping details could not be loaded. Please try again.' : shippingRateHint(deliveryState, quote?.shippingFee ?? null, quote?.shippingThreshold ?? null)}
+            </p>
           </label>
           <form className="flex gap-2 mb-1" onSubmit={(e) => { e.preventDefault(); setCouponCode(code.trim().toUpperCase()); }}>
             <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Coupon code" aria-label="Coupon code" className={`${inputCls} uppercase`} />
@@ -113,6 +117,7 @@ export default function Cart() {
             </dl>
           )}
           {quote && <p className="text-xs text-text-muted mt-3">{freeShippingMessage(quote.subtotal, quote.shippingThreshold)}</p>}
+          {quote && <div className="mt-4"><MentoringOffer subtotal={quote.subtotal} discount={quote.discount} /></div>}
           {!settings.isAcceptingOrders && <p className="text-sm text-error mt-3">{settings.pausedMessage}</p>}
           <button disabled={blocked || loading} onClick={() => nav('/checkout')} className={`${btnPrimary} w-full mt-5 h-12`}>Proceed to checkout</button>
           <p className="text-xs text-text-muted mt-3 text-center">You will be asked to log in with Google before checkout.</p>

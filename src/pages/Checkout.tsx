@@ -1,17 +1,18 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ErrorBox, Field, Icon, Img, Spinner, btnGhost, btnPrimary, inputCls, useToast } from '../components/ui';
+import MentoringOffer from '../components/MentoringOffer';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useStore } from '../context/StoreContext';
 import { api } from '../lib/api';
 import { INDIAN_STATES, rupees } from '../lib/format';
-import { freeShippingMessage } from '../lib/shipping';
+import { freeShippingMessage, shippingRateHint } from '../lib/shipping';
 import type { Address, Order } from '../lib/types';
 import { openRazorpayCheckout, type RazorpaySuccess } from '../lib/razorpay';
 import { useQuote } from './Cart';
 
-const blank = { label: 'Home', name: '', phone: '', line1: '', landmark: '', city: '', state: '', pincode: '', isDefault: false };
+const blank = { label: 'Home', name: '', phone: '', line1: '', landmark: '', city: '', state: 'Tamil Nadu', pincode: '', isDefault: false };
 
 interface OnlinePaymentSession {
   orderId: string;
@@ -194,7 +195,12 @@ export default function Checkout() {
                 <Field label="Landmark (optional)"><input className={inputCls} value={form.landmark} onChange={(e) => set('landmark', e.target.value)} /></Field>
                 <Field label="Pincode"><input required inputMode="numeric" maxLength={6} className={inputCls} value={form.pincode} onChange={(e) => set('pincode', e.target.value.replace(/\D/g, ''))} autoComplete="postal-code" /></Field>
                 <Field label="City"><input required className={inputCls} value={form.city} onChange={(e) => set('city', e.target.value)} autoComplete="address-level2" /></Field>
-                <Field label="State"><select required className={inputCls} value={form.state} onChange={(e) => set('state', e.target.value)}><option value="">Select state</option>{INDIAN_STATES.map((s) => <option key={s}>{s}</option>)}</select></Field>
+                <div>
+                  <Field label="State"><select required className={inputCls} value={form.state} onChange={(e) => set('state', e.target.value)}><option value="">Select state</option>{INDIAN_STATES.map((s) => <option key={s}>{s}</option>)}</select></Field>
+                  <p aria-live="polite" className="mt-1.5 text-xs text-text-muted">
+                    {quoteError ? 'Shipping details could not be loaded. Please try again.' : shippingRateHint(form.state, quote?.shippingFee ?? null, quote?.shippingThreshold ?? null)}
+                  </p>
+                </div>
                 <Field label="Save as"><select className={inputCls} value={form.label} onChange={(e) => set('label', e.target.value)}><option>Home</option><option>Work</option><option>Other</option></select></Field>
                 {formErr && <div className="sm:col-span-2"><ErrorBox message={formErr} /></div>}
                 <div className="sm:col-span-2 flex gap-3">
@@ -249,6 +255,7 @@ export default function Checkout() {
             </dl>
           )}
           {quote && <p className="text-xs text-text-muted mt-3">{freeShippingMessage(quote.subtotal, quote.shippingThreshold)}</p>}
+          {quote && <div className="mt-4"><MentoringOffer subtotal={quote.subtotal} discount={quote.discount} /></div>}
           {!deliveryState && !adding && <p className="text-xs text-text-muted mt-3">Choose a delivery address to calculate shipping and total.</p>}
           {problems.map((m) => <p key={m} className="text-sm text-error mt-3">{m}. <Link to="/cart" className="underline font-semibold">Update cart</Link></p>)}
           {quote?.couponError && couponCode && <p className="text-sm text-error mt-3">{quote.couponError}. <Link to="/cart" className="underline font-semibold">Fix coupon</Link></p>}

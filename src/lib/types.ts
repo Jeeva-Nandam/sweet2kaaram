@@ -20,6 +20,7 @@ export interface Order {
   id: string; orderNumber: string; customerName: string; customerEmail: string; customerPhone: string;
   address: Omit<Address, 'id' | 'isDefault'>; items: OrderItem[];
   subtotal: number; discount: number; couponCode: string; shippingFee: number; total: number;
+  mentoringEligible: boolean; mentoringProvided: boolean;
   paymentMethod: 'COD' | 'ONLINE'; paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   status: OrderStatus; statusHistory: { status: OrderStatus; note: string; at: string }[];
   tracking: { courier: string; trackingNumber: string; trackingUrl: string; estimatedDelivery: string | null };

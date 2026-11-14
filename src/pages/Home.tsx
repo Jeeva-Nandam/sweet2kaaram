@@ -33,6 +33,35 @@ export default function Home() {
         </div>
       </section>
 
+      <section aria-labelledby="launchpad-title" className="relative isolate mt-6 overflow-hidden rounded-3xl border border-[#d7b16b]/40 bg-gradient-to-br from-[#482019] via-primary to-[#85432c] text-white shadow-sm">
+        <div aria-hidden="true" className="absolute -right-20 -top-24 h-72 w-72 rounded-full border-[28px] border-white/[0.06]" />
+        <div aria-hidden="true" className="absolute right-24 -bottom-36 h-72 w-72 rounded-full border-[24px] border-[#f2c879]/10" />
+        <div className="relative grid items-center gap-8 p-6 sm:p-9 lg:grid-cols-[minmax(0,1fr)_15rem]">
+          <div className="max-w-3xl">
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-[#ffe0a1]">
+              <Icon name="auto_awesome" className="text-base" />
+              A little something extra
+            </p>
+            <h2 id="launchpad-title" className="font-serif text-2xl font-bold leading-tight sm:text-4xl">
+              More Than Just Snacks—It’s a Launchpad.
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/90 sm:text-base">
+              Every order of ₹3,000+ brings authentic Vellankoil flavours to your table and unlocks 1-Year Free Career &amp; Personal Empowerment Mentoring with Zero2Billion
+            </p>
+            <p className="mt-2 text-xs text-white/70">Offer applies to an item subtotal of ₹3,000 or more after discounts, before shipping.</p>
+            <Link to="/shop" className="mt-5 inline-flex h-11 items-center gap-2 rounded-xl bg-[#ffe0a1] px-5 text-sm font-bold text-[#482019] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+              Explore our flavours
+              <Icon name="arrow_forward" className="text-lg" />
+            </Link>
+          </div>
+          <div className="hidden rounded-2xl border border-white/20 bg-white/10 p-5 text-center shadow-inner sm:block">
+            <Icon name="school" className="text-4xl text-[#ffe0a1]" />
+            <p className="mt-3 font-serif text-3xl font-bold">₹3,000+</p>
+            <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-white/80">Unlock one year of mentoring</p>
+          </div>
+        </div>
+      </section>
+
       <ul className="mt-6 grid sm:grid-cols-3 gap-3 text-sm">
         {[
           ['local_shipping', 'Free shipping from ₹499 in Tamil Nadu / ₹799 elsewhere'],

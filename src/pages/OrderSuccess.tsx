@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { ErrorBox, Icon, PageLoader, btnGhost, btnPrimary } from '../components/ui';
+import MentoringOffer from '../components/MentoringOffer';
 import { rupees } from '../lib/format';
 import type { Order } from '../lib/types';
 import { useApi } from '../lib/useApi';
@@ -15,6 +16,10 @@ export default function OrderSuccess() {
       <h1 className="font-serif text-3xl font-semibold mt-5">Thank you, your order is placed</h1>
       <p className="text-on-surface-variant mt-2">Order number</p>
       <p className="text-2xl font-bold text-primary tracking-wide">{o.orderNumber}</p>
+
+      <div className="mt-6 text-left">
+        <MentoringOffer subtotal={o.subtotal} discount={o.discount} orderPlaced />
+      </div>
 
       <div className="bg-white border border-border-warm rounded-2xl p-5 mt-8 text-left text-sm space-y-3">
         <div className="flex justify-between"><span className="text-text-muted">Items</span><span>{o.items.reduce((n, i) => n + i.quantity, 0)}</span></div>

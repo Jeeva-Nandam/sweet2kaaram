@@ -8,16 +8,25 @@ import { useApi } from '../lib/useApi';
 
 const TABS: ('' | OrderStatus)[] = ['', 'PLACED', 'CONFIRMED', 'PREPARING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'];
 
+function canProvideMentoring(order: Order) {
+  return order.mentoringEligible
+    && !order.mentoringProvided
+    && order.status !== 'CANCELLED'
+    && order.paymentStatus === 'PAID'
+    && (order.paymentMethod === 'ONLINE' || order.status === 'DELIVERED');
+}
+
 export function AdminOrders() {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const status = params.get('status') ?? '';
+  const mentoring = params.get('mentoring') ?? '';
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
-  const path = `/admin/orders${qs({ status, q, page, limit: 20 })}`;
+  const path = `/admin/orders${qs({ status: mentoring === 'pending' ? '' : status, mentoring, q, page, limit: 20 })}`;
   const [debounced, setDebounced] = useState(path);
   useEffect(() => { const t = setTimeout(() => setDebounced(path), 250); return () => clearTimeout(t); }, [path]);
-  useEffect(() => setPage(1), [status, q]);
+  useEffect(() => setPage(1), [status, mentoring, q]);
   const { data, error, loading, reload } = useApi<Page<Order>>(debounced);
   const remove = async (order: Order) => {
     if (!window.confirm(`Permanently delete order ${order.orderNumber}? This cannot be undone.`)) return;
@@ -33,26 +42,38 @@ export function AdminOrders() {
     <div className="max-w-6xl space-y-5">
       <h1 className="font-serif text-3xl font-semibold">Orders</h1>
       <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-        {TABS.map((t) => <button key={t || 'all'} onClick={() => { const n = new URLSearchParams(); if (t) n.set('status', t); setParams(n); }} className={`shrink-0 h-9 px-4 rounded-full text-sm font-semibold border cursor-pointer ${status === t ? 'bg-primary text-white border-primary' : 'bg-white border-border-warm'}`}>{t ? STATUS_LABEL[t] : 'All'}</button>)}
+        <button onClick={() => setParams({ mentoring: 'pending' })} className={`shrink-0 h-9 px-4 rounded-full text-sm font-semibold border cursor-pointer inline-flex items-center gap-1.5 ${mentoring === 'pending' ? 'bg-primary text-white border-primary' : 'bg-white border-border-warm'}`}>
+          <Icon name="school" className="text-base" />Mentoring to provide
+        </button>
+        {TABS.map((t) => <button key={t || 'all'} onClick={() => { const n = new URLSearchParams(); if (t) n.set('status', t); setParams(n); }} className={`shrink-0 h-9 px-4 rounded-full text-sm font-semibold border cursor-pointer ${!mentoring && status === t ? 'bg-primary text-white border-primary' : 'bg-white border-border-warm'}`}>{t ? STATUS_LABEL[t] : 'All'}</button>)}
       </div>
       <input className={`${inputCls} max-w-md`} placeholder="Search order no., name, phone or email…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search orders" />
       {error && <ErrorBox message={error} onRetry={reload} />}
       {loading && !data && <PageLoader />}
-      {data && data.items.length === 0 && <div className="bg-white border border-border-warm rounded-2xl"><Empty icon="receipt_long" title="No orders found" text="Orders appear here as soon as customers place them." /></div>}
+      {data && data.items.length === 0 && <div className="bg-white border border-border-warm rounded-2xl"><Empty icon="receipt_long" title={mentoring === 'pending' ? 'No mentoring benefits to provide' : 'No orders found'} text={mentoring === 'pending' ? 'Eligible orders ready for mentoring will appear here.' : 'Orders appear here as soon as customers place them.'} /></div>}
       {data && data.items.length > 0 && (
         <ul className="bg-white border border-border-warm rounded-2xl divide-y divide-border-warm">
-          {data.items.map((o) => (
-            <li key={o.id} className="flex flex-wrap items-center gap-x-3">
-              <Link to={`/adminpage/orders/${o.id}`} className="flex flex-1 flex-wrap items-center gap-x-6 gap-y-1 p-4 min-w-0 hover:bg-surface-container-low">
-                <div className="min-w-32"><div className="font-bold">{o.orderNumber}</div><div className="text-xs text-text-muted">{dateTime(o.createdAt)}</div></div>
-                <div className="flex-1 min-w-40"><div className="font-semibold text-sm">{o.customerName}</div><div className="text-xs text-text-muted">{o.address.city} · {o.items.reduce((n, i) => n + i.quantity, 0)} items</div></div>
-                <div className="font-bold">{rupees(o.total)}</div>
-                <div className="text-xs text-text-muted w-16">{o.paymentMethod === 'COD' ? 'COD' : 'Online'} · {o.paymentStatus === 'PAID' ? 'Paid' : 'Due'}</div>
-                <StatusBadge status={o.status} />
-              </Link>
-              <button aria-label={`Delete order ${o.orderNumber}`} className="p-3 text-on-surface-variant hover:text-error cursor-pointer" onClick={() => remove(o)}><Icon name="delete" className="text-xl" /></button>
-            </li>
-          ))}
+          {data.items.map((o) => {
+            const mentoringReady = canProvideMentoring(o);
+            const mentoringLabel = o.mentoringProvided
+              ? 'Mentoring provided'
+              : mentoringReady
+                ? 'Mentoring to provide'
+                : o.status === 'CANCELLED' ? 'Mentoring offer cancelled' : 'Mentoring eligible';
+            return (
+              <li key={o.id} className="flex flex-wrap items-center gap-x-3">
+                <Link to={`/adminpage/orders/${o.id}`} className="flex flex-1 flex-wrap items-center gap-x-6 gap-y-1 p-4 min-w-0 hover:bg-surface-container-low">
+                  <div className="min-w-32"><div className="font-bold">{o.orderNumber}</div><div className="text-xs text-text-muted">{dateTime(o.createdAt)}</div></div>
+                  <div className="flex-1 min-w-40"><div className="font-semibold text-sm">{o.customerName}</div><div className="text-xs text-text-muted">{o.address.city} · {o.items.reduce((n, i) => n + i.quantity, 0)} items</div></div>
+                  <div className="font-bold">{rupees(o.total)}</div>
+                  <div className="text-xs text-text-muted w-16">{o.paymentMethod === 'COD' ? 'COD' : 'Online'} · {o.paymentStatus === 'PAID' ? 'Paid' : 'Due'}</div>
+                  {o.mentoringEligible && <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${o.mentoringProvided ? 'bg-green-100 text-green-800' : mentoringReady ? 'bg-amber-100 text-amber-900' : 'bg-surface-container text-on-surface-variant'}`}>{mentoringLabel}</span>}
+                  <StatusBadge status={o.status} />
+                </Link>
+                <button aria-label={`Delete order ${o.orderNumber}`} className="p-3 text-on-surface-variant hover:text-error cursor-pointer" onClick={() => remove(o)}><Icon name="delete" className="text-xl" /></button>
+              </li>
+            );
+          })}
         </ul>
       )}
       {data && data.pages > 1 && (
@@ -74,6 +95,8 @@ export function AdminOrderDetail() {
   const [saving, setSaving] = useState(false);
   const [formErr, setFormErr] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [mentoringSaving, setMentoringSaving] = useState(false);
+  const [mentoringError, setMentoringError] = useState('');
 
   useEffect(() => {
     if (!o) return;
@@ -88,6 +111,7 @@ export function AdminOrderDetail() {
   const options: OrderStatus[] = closed ? [o.status] : [o.status, ...FLOW.slice(FLOW.indexOf(o.status) + 1), 'CANCELLED'];
   const next = FLOW[FLOW.indexOf(o.status) + 1] as OrderStatus | undefined;
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
+  const mentoringReady = canProvideMentoring(o);
 
   const submit = async (e?: FormEvent, forceStatus?: OrderStatus) => {
     e?.preventDefault();
@@ -111,6 +135,19 @@ export function AdminOrderDetail() {
       navigate('/adminpage/orders', { replace: true });
     } catch (err) { toast.err((err as Error).message); } finally { setDeleting(false); }
   };
+  const markMentoringProvided = async () => {
+    setMentoringSaving(true);
+    setMentoringError('');
+    try {
+      const updated = await api.patch<Order>(`/admin/orders/${o.id}`, { mentoringProvided: true });
+      setData(updated);
+      toast.ok('Mentoring marked as provided');
+    } catch (err) {
+      setMentoringError((err as Error).message);
+    } finally {
+      setMentoringSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-6xl space-y-5">
@@ -119,6 +156,27 @@ export function AdminOrderDetail() {
 
       <div className="grid lg:grid-cols-[1fr_24rem] gap-6 items-start">
         <div className="space-y-6">
+          {o.mentoringEligible && (
+            <section className="bg-[#fff8e9] border border-[#d7b16b]/60 rounded-2xl p-5">
+              <h2 className="font-bold flex items-center gap-2"><Icon name="school" className="text-primary" />1-Year mentoring benefit</h2>
+              <p className="mt-2 text-sm text-on-surface-variant">
+                Qualifying item subtotal: {rupees(Math.max(0, o.subtotal - o.discount))} (after discounts, before shipping).
+              </p>
+              <p className="mt-2 text-sm font-semibold">
+                {o.mentoringProvided
+                  ? 'Marked as provided.'
+                  : o.status === 'CANCELLED'
+                    ? 'This order was cancelled; do not provide the benefit.'
+                    : mentoringReady
+                      ? 'Action required: provide this customer with the mentoring benefit.'
+                      : o.paymentMethod === 'COD'
+                        ? 'Waiting for the COD order to be delivered and paid.'
+                        : 'Waiting for online payment to be confirmed.'}
+              </p>
+              {mentoringError && <div className="mt-3"><ErrorBox message={mentoringError} /></div>}
+              {mentoringReady && <button className={`${btnPrimary} mt-4`} disabled={mentoringSaving} onClick={markMentoringProvided}>{mentoringSaving ? <Spinner className="border-white/40 border-t-white" /> : 'Mark mentoring as provided'}</button>}
+            </section>
+          )}
           <section className="bg-white border border-border-warm rounded-2xl p-5">
             <h2 className="font-bold mb-3">Items</h2>
             <ul className="space-y-3">{o.items.map((i) => (
