@@ -27,7 +27,7 @@ export default function Header() {
 
   const ribbon = !settings.isAcceptingOrders
     ? settings.pausedMessage || 'We are not taking new orders right now.'
-    : settings.announcement || 'Shipping calculated by delivery state and order value';
+    : settings.announcement || 'Fuel your hustle. Taste the tradition. Unlock your future.';
 
   const tab = ({ isActive }: { isActive: boolean }) =>
     `shrink-0 px-3 py-2 text-sm font-semibold border-b-2 transition-colors ${isActive ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-primary'}`;
